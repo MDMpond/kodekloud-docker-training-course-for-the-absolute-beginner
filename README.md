@@ -11,11 +11,20 @@
     - [Linux install on Windows Subsystem for Linux (WSL)](#linux-install-on-windows-subsystem-for-linux-wsl)
     - [Kali](#kali)
   - [Setup and Install Docker](#setup-and-install-docker)
-- [Docker Commands](#docker-commands)
-  - [Basic Docker Commands](#basic-docker-commands)
+- [Basic Docker Commands](#basic-docker-commands)
 - [Docker Run](#docker-run)
-- [Docker Images](#docker-images)
+    - [Port Mapping or Port Publishing](#port-mapping-or-port-publishing)
+    - [Volume Mapping](#volume-mapping)
+    - [Container Logs](#container-logs)
+  - [Advanced Run Features](#advanced-run-features)
+    - [Jenkins (Build System / Web Server)](#jenkins-build-system--web-server)
+    - [Demo - Creating a new Docker image](#demo---creating-a-new-docker-image)
+- [It was "pip install flask", but since I had to install python2 it needed changed.](#it-was-pip-install-flask-but-since-i-had-to-install-python2-it-needed-changed)
+- [pip2 install flask-mysql (The demo skipped it)](#pip2-install-flask-mysql-the-demo-skipped-it)
+  - [Environmental Variables](#environmental-variables)
+  - [Commands vs Entrypoint](#commands-vs-entrypoint)
 - [Docker Compose](#docker-compose)
+  - [Docker Build](#docker-build)
 - [Docker Engine, Storage](#docker-engine-storage)
 - [Networking](#networking)
 - [Registry](#registry)
@@ -23,7 +32,6 @@
 - [Container Orchestration - Docker Swarm and Kubernetes](#container-orchestration---docker-swarm-and-kubernetes)
 - [Conclusion](#conclusion)
 - [Relevant Links](#relevant-links)
-  - [Training and Certification](#training-and-certification)
 
 
 # Overview
@@ -146,7 +154,7 @@ To run Windows containers, you need Windows 10 or Windows 11 Professional or Ent
 ```
 4. Follow the instructions to install on Ubuntu Linux
 
-# Docker Commands
+# Basic Docker Commands
 
 - docker compose version
 - docker --version
@@ -190,18 +198,297 @@ To run a command on a running container get the info with ps -a and then run doc
 Unlike a VM, containers are not meant to host an operating system, but rather a to run a specific task or process. Once a task is complete a container will exit. It exists only as long as the process inside it is alive.
 ```
 
-## Basic Docker Commands
-
-
-
-
 # Docker Run
 
+Run specific versions of an image with a tag. It is the image name separaged by a colon and version. (Ex. docker run redis:4.0) If no tag is specified Docker will consider the default tag "latest".
 
-# Docker Images
+By default a Docker container does not listen to standard input. It runs in a non-interactive mode. To use interactive mode you must specify the -i parameter.
 
+**Example:**
+```
+docker run -i kodekloud/simple-prompt-docker
+Also, to use a sudo-terminal use -it as such.
+docker run -i kodekloud/simple-prompt-docker
+```
+
+Use the --name "{Container Name} to assign a name to the container. **Note the two dashes**
+
+### Port Mapping or Port Publishing
+
+- docker run -p 80:5000 kodekloud/webapp (This would map to the local IP)
+
+To get the container IP run the following command: (Returns information in a JSON format.)
+
+```
+docker inspect \
+  -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' {container_name_or_id}
+```
+
+To check the port mapping run "docker por {ID}".
+
+### Volume Mapping
+
+Containers have their own isolated filesystem and all data stored is located inside the container. Therefore, if you remove and recreate the container all the data is lost. It is not persistent. If you would like the data to persist you would have to map the directory to a location outside the container.
+
+**Example:**
+```
+docker run -v /opt/datadir:/var/lib/mysql mysql (-v {local path}:{internal path})
+```
+
+To get additional details about a container that the docker ps command us "docker inspect {Container Name or ID}".
+
+### Container Logs
+
+On a running instance use the "docker logs {Container Name or ID}" command.
+
+**Note:**
+```
+Use the "docker run jenkins/jenkins" command and not "docker run jenkins" command which is now depreciated.
+```
+
+## Advanced Run Features
+
+- docker run ubuntu cat /etc/*release* (Runs the container and shows version)
+- docker attach {Container Name or ID} will bring the container back into the forground. Not sure why you would want that.
+
+### Jenkins (Build System / Web Server)
+
+1. docker run jenkins/jenkins
+2. Run docker ps from another console
+3. It may be accessed by the host IP or a mapped port
+4. To find the internal IP address of the container run "docker inspect {Container Name or ID}". Used from host. The local port can be verified listening with the netstat -aon from the command shell.
+5. connect to http:/127.0.0.1:8080
+
+**Note: Persistent Storage**
+```
+
+docker run -d -p 8080:8080 -p 50000:50000 --restart=on-failure -v jenkins_home:/var/jenkins_home jenkins/jenkins
+
+Access is http://127.0.0.1:8080
+
+Note:
+The /var/lib/docker/volumes/jenkins_home directory will be the actual configuration data store for the named volume.
+```
+
+
+**Creating an Image:**
+1. Create a Docker file named Dockerfile. Everything in caps on the very left are **Instructions** and every thing in lower-case are **Arguments**. Every Docker image that is created must be based off of another image. Either an Operating System or a previously created image.
+
+**Example:**
+```
+FROM Ubuntu
+
+RUN apt-get update
+RUN apt-get install python
+
+RUN pip install flask
+RUN pip install flask-mysql
+
+COPY ./opt/source-code
+
+ENTRYPOINT FLASK_API=/opt/source-code/app.py flask run
+```
+1. Run the Build command and specify the Docker file and tag name for the image. This will make it available locally on your system. All Docker files must start with the **RUN** instruction.
+
+**Example:**
+```
+docker build Dockerfile -t mmumshad/my-custom-app
+```
+2. To make it available on the Docker Hub registry run the push command and specify the name of the image you just created.
+
+**Example:**
+```
+docker push mmumshad/my-custom-app
+```
+Docker is built in a layered architecture. Each layer only stores the changes from the previous layer. To see the history run the **docker history {registry/image name}** command. When you run the **docker build .** command you will see the steps run and their status. All steps are cashed so if one layer fails and you fix it when you re-run the docker build command it will skip the completed layers. The same is true when you add additional steps in the docker file. This way, rebuilding the image is faster and you don't have to wait for Docker to rebuild the entire image each time. When you update your code, only the layers above the existing layers need built.
+
+**Note:**
+```
+You can containerize just about everything.
+```
+
+### Demo - Creating a new Docker image
+
+- [mmumshad/simple-webapp-flask](https://github.com/mmumshad/simple-webapp-flask)
+
+* From within docker perform the following steps 
+
+**Note:**
+```
+Map port if run from windows
+```
+
+1. docker run -it ubuntu bash (-it is "Standard input" and "terminal".)
+2. apt-get update (This will pull Python)
+3. apt-get -y install python3
+
+```
+Note:
+Need to get python3 working. It was originally just supposed to cal python, but throws an error.
+```
+4. apt-get install python-pip
+5. pip2 install flask
+# It was "pip install flask", but since I had to install python2 it needed changed.
+# pip2 install flask-mysql (The demo skipped it)
+6. cat > opt/app.py (Cut and paste code then Ctrl+C to exit)
+7. cd opt
+8. FLASK_APP=app.py flask run --host=0.0.0.0
+9. From host run http://172.17.0.2:5000
+10.  From host run http://172.17.0.2:5000/how are you
+
+So basically:
+
+1. Make a working directory
+2. Run through the code manually to make sure it works
+3. Run history and copy the code into a docker file.
+4. Run "docker build . -t {Tag Name}" to build the image
+
+**Pushing to:**
+
+- Login to Docker Hub: docker login
+- docker push dockoftheday/{Image Name}
+
+## Environmental Variables
+
+Variables can be set at the OS level and changed at the CLI as well.
+
+**Example:**
+```
+Within the app code.
+
+color = os.environ.get('APP_COLOR')
+
+Set in the OS.
+
+export APP_COLOR=blue; python app.
+
+From the CLI to override.
+
+docker run -e APP_COLOR=red simple-webapp-color 
+```
+
+To find the docker veriables us the docker inspect {Image Name / ID}.
+
+
+## Commands vs Entrypoint
+
+
+
+**Example:**
+```
+# Install Nginx.
+
+RUN \
+  add-apt-repository -y ppa:nginx/stable && \
+  apt-get update && \
+  apt-get install -y nginx && \
+  rm -rf /var/lib/apt/lists/* && \
+  echo "\ndaemon off;" >> /etc/nginx/nginx.conf && \
+  chown -R www-data:www-data /var/lib/nginx
+
+  # Define mountable directories.
+  
+  VOLUME ["/etc/nginx/sites-enabled", "/etc/nginx/certs", "/etc/nginx/con....
+
+  # Define working directory.
+
+  WORKDIR /etc/nginx
+
+  # Define default command.
+
+  CMD ["nginx"]
+
+```
+
+Two formats for running the command within the image.
+
+- CMD command param1 (Standard Standard)
+- CMD ["command", "param1"] (JSON Format)
+
+THe ENTRYPOINT instruction specifies the command that will be run when the container starts. 
+
+**Example:**
+```
+FROM Ubuntu
+
+ENTRYPOINT ["sleep"]
+
+CMD ["5"] (Would set a default)
+
+To override simply run:
+docker run {sleeper image} 10
+```
+
+Also, the entrypoing can be overridden as such:
+```
+docker run --entrypoint sleep2.0 ubuntu-sleeper 10
+```
 
 # Docker Compose
+
+A better way to configure and run multiple services than multiple **docker run** commands using a docker-compose.yml file format.
+
+Running a **docker-compose up** command is easier to implement, run, and maintain as all configuration changes are always stored in the docker-compose configuration file. However, this is only applicable to running the multiple services on a single Docker host.
+
+** Sample Application: Voting application**
+
+- voting-app (Python)
+- in-memory db (Redis)
+- worker (.NET application)
+- db (PostgreSQL / table of cat & dog totals)
+- result-app (Node.js)
+
+ Docker run --links tells a container to reference another container service by name.
+
+ **Example: (Legacy)**
+ ```
+
+docker run -d --name=redis redis
+
+docker run -d --name=db postgres:9.4
+
+docker run -d --name=vote -p 5000:80 --link redis:redis voting-app
+
+docker run -d --name=result -p 5001:80 --link db:db  result-app
+
+docker run -d --name=worker --link db:db voting-app
+
+NOTE: Using links this way is deprecated and may be removed in future releases of Docker.
+ ```
+
+**Example: (docker-compose.yml)**
+```
+
+redis
+  image: redis
+db:
+  image: postgres9.4
+vote: 
+  image: voting-app
+  ports:
+    - 5000:80
+  links:
+    - redis
+result:
+   result-app
+   ports:
+    - 5001:80
+   links:
+    - db
+worker:
+  image: worker
+  links:
+    - redis
+    - db
+
+NOTE: Links could also be specified in the **db:db = db** format.
+
+```
+## Docker Build
+
+It is not necessary that all images are built. In our example three are custom and need built. to do this replace the **image: {image name}** with **build:{./image code and a Dockerfile}** instead.
+
+
 
 
 # Docker Engine, Storage
@@ -235,8 +522,7 @@ Unlike a VM, containers are not meant to host an operating system, but rather a 
 - [Docker Hub](https://hub.docker.com/)
 - [Hashicorp Packer on Docker Hub](https://hub.docker.com/r/hashicorp/packer)
 - [How to Do a Clean Restart of a Docker Instance](https://docs.tibco.com/pub/mash-local/4.3.0/doc/html/docker/GUID-BD850566-5B79-4915-987E-430FC38DAAE4.html)
-
-## Training and Certification
-
-- [ ] [Udemy: Building Automated Machine Images with HashiCorp Packer
-](https://www.udemy.com/course/hashicorp-packer/learn/lecture/26239090#overview)
+- [How to check open ports for live streaming](https://inevent.com/blog/tech-and-trends/how-to-check-open-ports-for-live-streaming.html)
+- [Docker Hub: docker/example-voting-app-vote](https://hub.docker.com/r/docker/example-voting-app-vote)
+- - [Docker Hub: docker/example-voting-app-worker](https://hub.docker.com/r/docker/example-voting-app-worker)
+- - [Docker Hub: docker/example-voting-app-result](https://hub.docker.com/r/docker/example-voting-app-result)
