@@ -24,6 +24,8 @@
   - [Environmental Variables](#environmental-variables)
   - [Commands vs Entrypoint](#commands-vs-entrypoint)
 - [Docker Compose](#docker-compose)
+  - [Versions](#versions)
+  - [Docker Compose Networks](#docker-compose-networks)
   - [Docker Build](#docker-build)
 - [Docker Engine, Storage](#docker-engine-storage)
 - [Networking](#networking)
@@ -482,8 +484,33 @@ worker:
     - db
 
 NOTE: Links could also be specified in the **db:db = db** format.
-
 ```
+
+When docker you run the **docker compose up** command it will first build the images, give a temporary name for it, and then use those images to run containers using the specified options.
+
+## Versions
+
+- Versiol 1: 
+  - Could not specify different network than default bridged network and then use **--links** to enable communication between the containers.
+  - Could not control dependency on order
+- Version 2:
+  - Format changes: 
+    - From version 2 and up you must specify the **version: {version #}** at the top of the file.
+    - you no longer specify stack information separately. It is all encapsulated in a services section. So basically, start with services: and move everything under that.
+    - Version 2 will automatically create a bridge network connection for this application and then attaches all new containers to that network. All containers are then able to communicate to each other using the respective service name. Therefore, there is no more use for **--links**.
+    - Version 2 also introduces a depends on feature (**depends_on:**) to set the startup order.
+- Version 3:
+  - Adds support for **Docker Swarm**
+
+## Docker Compose Networks
+
+**Example: (Front-end / Back-end Netorks)**
+
+1. Add a new networks section at the root level adjacent to the services: of the docker-compose.yml file and add a map of networks we are planning to use. 
+2. Then under each service create a **networks:** section and define which networks the service should be attached to.
+
+<img src="./images/compose-docker-compose-final.png" height="500" />
+
 ## Docker Build
 
 It is not necessary that all images are built. In our example three are custom and need built. to do this replace the **image: {image name}** with **build:{./image code and a Dockerfile}** instead.
@@ -524,5 +551,7 @@ It is not necessary that all images are built. In our example three are custom a
 - [How to Do a Clean Restart of a Docker Instance](https://docs.tibco.com/pub/mash-local/4.3.0/doc/html/docker/GUID-BD850566-5B79-4915-987E-430FC38DAAE4.html)
 - [How to check open ports for live streaming](https://inevent.com/blog/tech-and-trends/how-to-check-open-ports-for-live-streaming.html)
 - [Docker Hub: docker/example-voting-app-vote](https://hub.docker.com/r/docker/example-voting-app-vote)
-- - [Docker Hub: docker/example-voting-app-worker](https://hub.docker.com/r/docker/example-voting-app-worker)
-- - [Docker Hub: docker/example-voting-app-result](https://hub.docker.com/r/docker/example-voting-app-result)
+- [Docker Hub: docker/example-voting-app-worker](https://hub.docker.com/r/docker/example-voting-app-worker)
+- [Docker Hub: docker/example-voting-app-result](https://hub.docker.com/r/docker/example-voting-app-result)
+- [Docker Hub: example-voting-app Repository](https://github.com/dockersamples/example-voting-app)
+
